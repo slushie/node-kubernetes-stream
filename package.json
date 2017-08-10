@@ -1,0 +1,30 @@
+{
+  "name": "kubernetes-stream",
+  "version": "1.0.0",
+  "description": "Streaming Kubernetes events",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "kubernetes",
+    "stream"
+  ],
+  "author": "Josh Leder <josh@ha.cr>",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "chai": "^4.1.1",
+    "debug": "^2.6.8",
+    "kubernetes-client": "^3.13.0",
+    "lodash": "^4.17.4",
+    "mocha": "^3.5.0"
+  },
+  "devDependencies": {
+    "eslint": "^4.3.0",
+    "eslint-config-standard": "^10.2.1",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-node": "^5.1.1",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^3.0.1"
+  }
+}
