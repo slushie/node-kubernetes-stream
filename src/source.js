@@ -11,7 +11,12 @@ class EventSource extends EventEmitter {
 
   list (options = {}) {
     debug('listing with %j', options)
-    this.listFn.call(null, options, (list) => {
+    this.listFn.call(null, options, (err, list) => {
+      if (err) {
+        debug('list error %s', String(err))
+        return this.emit('error', err)
+      }
+
       debug('%s returned %d items', list.kind, list.items.length)
       this.emit('list', list)
     })
