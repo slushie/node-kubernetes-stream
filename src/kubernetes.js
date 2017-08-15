@@ -5,42 +5,49 @@ const Kube = require('kubernetes-client')
 const EventSource = require('./source')
 const debug = require('debug')('kubernetes-stream:api')
 
-export function getResourceVersion (object) {
+function getResourceVersion (object) {
   return _.get(object, 'metadata.resourceVersion')
 }
 
-export function createEventSource ({
-  kind = 'Pod',
+function createClient ({
+  kind = 'pods',
   apiVersion = 'v1',
   namespace = undefined
 } = {}) {
-  let client = new Kube.Api(
-    findKubernetesConfig()
-  ).group(apiVersion)
+  let client = new Kube.Api(findKubernetesConfig()).group(apiVersion)
+  client = client[kind.toLowerCase()]
 
   if (namespace !== undefined) {
     client = client.namespace(namespace)
   }
 
+  return client
+}
+
+function createEventSource (client = createClient()) {
   return new EventSource(
-    (options) => client[kind].get({ qs: options }), // list
-    (options, cb) => streamCallback( // watch
-      client[kind].get({ qs: { watch: true, ...options } }),
-      cb
+    (options) => client.get({qs: options}), // list
+    (options, callback) => streamCallback( // watch
+      client.get({
+        qs: Object.assign({
+          watch: true
+        }, options)
+      }),
+
+      callback
     )
   )
 }
 
 let config
-export function findKubernetesConfig () {
+function findKubernetesConfig () {
   if (config) {
     return config
   }
 
   if (process.env.KUBECONFIG) {
     debug('using KUBECONFIG %j', process.env.KUBECONFIG)
-    const kubeconfig = Kube.config.loadKubeconfig(
-      process.env.KUBERNETES_SERVICE_HOST)
+    const kubeconfig = Kube.config.loadKubeconfig(process.env.KUBECONFIG)
     config = Kube.config.fromKubeconfig(kubeconfig)
     return config
   }
@@ -58,7 +65,7 @@ export function findKubernetesConfig () {
   return config
 }
 
-export function streamCallback (stream, cb) {
+function streamCallback (stream, cb) {
   stream.on('data', (chunk) => {
     cb(null, chunk)
   }).on('error', (err) => {
@@ -71,4 +78,12 @@ export function streamCallback (stream, cb) {
     stream.removeAllListeners()
     stream.abort()
   }
+}
+
+module.exports = {
+  getResourceVersion,
+  createClient,
+  createEventSource,
+  findKubernetesConfig,
+  streamCallback
 }

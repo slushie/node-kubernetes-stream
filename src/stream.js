@@ -2,13 +2,17 @@
 
 const Readable = require('stream').Readable
 const debug = require('debug')('kubernetes-stream:stream')
-const { getResourceVersion } = require('./kubernetes')
+const {createEventSource, getResourceVersion} = require('./kubernetes')
 
 const DEFAULT_TIMEOUT = 5000
 
 class KubernetesStream extends Readable {
-  constructor ({ source, timeout = DEFAULT_TIMEOUT, ...rest }) {
-    super({ objectMode: true, ...rest })
+  constructor ({
+    source = createEventSource(),
+    timeout = DEFAULT_TIMEOUT,
+    ...rest
+  } = {}) {
+    super({objectMode: true, ...rest})
 
     this.timeout = timeout
     this.resourceVersion = '0'
@@ -19,41 +23,59 @@ class KubernetesStream extends Readable {
       .on('end', this._onSourceEnd)
   }
 
+  /**
+   * @protected
+   * @override
+   */
   _read () {
     debug('consumer wants to read')
-    if (!this.source.watching) {
-      this._listSource()
-    }
+    this.watch()
   }
 
-  _listSource () {
+  list () {
     const options = {
       resourceVersion: this.resourceVersion || '0'
     }
 
     debug('listing objects from rv %s', options.resourceVersion)
-    this.source.list(options)
+    return new Promise((resolve, reject) => {
+      this.source.once('error', reject).once('list', () => {
+        this.source.removeListener('error', reject)
+        resolve(this.resourceVersion)
+      })
+
+      this.source.list(options)
+    })
   }
 
-  _watchSource () {
+  watch () {
+    if (!this.resourceVersion) {
+      return this.list().then(this.watch)
+    }
+
     const timeoutSeconds = this.timeout * (Math.random() + 1) / 1000
+    const options = {
+      resourceVersion: this.resourceVersion,
+      timeoutSeconds
+    }
 
     debug('watching objects from rv %s with %ds timeout',
       this.resourceVersion, timeoutSeconds)
 
-    this.source.watch({
-      resourceVersion: this.resourceVersion,
-      timeoutSeconds
+    return new Promise((resolve, reject) => {
+      this.source.once('error', reject).once('event', () => {
+        this.source.removeListener('error', reject)
+        resolve(this.resourceVersion)
+      })
+
+      this.source.watch(options)
     })
   }
 
   _onSourceList (list) {
     this.resourceVersion = getResourceVersion(list)
     debug('latest rv %s', this.resourceVersion)
-
-    if (!this.source.watching) {
-      this._watchSource()
-    }
+    this.emit('list', list)
   }
 
   _onSourceEvent (event) {
@@ -68,7 +90,7 @@ class KubernetesStream extends Readable {
 
   _onSourceEnd () {
     debug('source watch ended')
-    this._watchSource()
+    this.watch()
   }
 }
 

@@ -30,7 +30,7 @@ describe('source.js', () => {
           it('comes from .list()', () => {
             const localOpts = {option: 'value'}
             subject.list(localOpts)
-            expect(listFnArgs[0]).to.eql(localOpts)
+            expect(listFnArgs[0]).to.equal(localOpts)
           })
         })
 
@@ -49,7 +49,7 @@ describe('source.js', () => {
               const apiList = {kind: 'Pod', items: []}
 
               subject.on('list', (list) => {
-                expect(list).to.eql(apiList)
+                expect(list).to.equal(apiList)
                 done()
               })
 
@@ -64,7 +64,7 @@ describe('source.js', () => {
               const cbErr = new Error('test')
 
               subject.on('error', (err) => {
-                expect(err).to.eql(cbErr)
+                expect(err).to.equal(cbErr)
                 done()
               })
 
