@@ -26,8 +26,9 @@ function createClient ({
   apiVersion = 'v1',
   namespace = undefined
 } = {}) {
-  let client = new Kube.Api(findKubernetesConfig()).group(apiVersion)
-  client = client[kind.toLowerCase()]
+  let client = new Kube
+    .Api(findKubernetesConfig())
+    .group(apiVersion)[kind]
 
   if (namespace !== undefined) {
     client = client.namespace(namespace)
