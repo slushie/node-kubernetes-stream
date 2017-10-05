@@ -4,7 +4,8 @@
   "description": "Streaming Kubernetes events",
   "main": "index.js",
   "scripts": {
-    "test": "istanbul cover _mocha"
+    "test": "istanbul cover _mocha",
+    "lint": "eslint src"
   },
   "keywords": [
     "kubernetes",
@@ -12,6 +13,9 @@
   ],
   "author": "Josh Leder <josh@ha.cr>",
   "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">=6.0"
+  },
   "dependencies": {
     "chai": "^4.1.1",
     "debug": "^2.6.8",
