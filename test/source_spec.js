@@ -1,12 +1,13 @@
 /* eslint-env mocha */
 'use strict'
 
+const sinon = require('sinon')
 const chai = require('chai')
 const expect = chai.expect
 
 describe('source.js', () => {
   const EventSource = require('../src/source.js')
-  it('should export the EventSource class', () => {
+  it('exports the EventSource class', () => {
     expect(EventSource).to.be.a('function')
       .with.property('name').equal('EventSource')
   })
@@ -76,11 +77,13 @@ describe('source.js', () => {
     })
 
     describe('watchFn', () => {
-      let subject, watchFn, watchFnArgs
-      beforeEach('default watchFn', () => {
+      let subject, watchFn, watchFnArgs, stopFn
+      beforeEach('create watchFn', () => {
+        stopFn = sinon.stub()
         watchFnArgs = undefined
         watchFn = (...args) => {
           watchFnArgs = args
+          return stopFn
         }
       })
 
@@ -89,6 +92,16 @@ describe('source.js', () => {
         kind: 'PodList',
         metadata: { resourceVersion: RESOURCE_VERSION },
         items: []
+      }
+      const apiEvent = {
+        type: 'Update',
+        object: {
+          kind: 'Pod',
+          metadata: {
+            resourceVersion: RESOURCE_VERSION,
+            name: 'test-pod-123'
+          }
+        }
       }
 
       beforeEach('create subject', () => {
@@ -116,7 +129,6 @@ describe('source.js', () => {
             it('emits a "event" event', (done) => {
               subject.watch()
               const callback = watchFnArgs[1]
-              const apiEvent = {type: 'Update', object: {kind: 'Pod'}}
 
               subject.on('event', (event) => {
                 expect(event).to.equal(apiEvent)
@@ -140,6 +152,30 @@ describe('source.js', () => {
 
               callback(cbErr)
             })
+          })
+        })
+      })
+
+      context('returns', () => {
+        context('stopFn', () => {
+          it('is called by .close()', () => {
+            subject.watch()
+            expect(stopFn.notCalled).to.equal(true)
+            subject.close()
+            expect(stopFn.calledOnce).to.equal(true)
+          })
+
+          it('is only called once', () => {
+            subject.watch()
+            subject.close()
+            subject.close()
+            expect(stopFn.callCount).to.equal(1)
+          })
+
+          it('receives no arguments', () => {
+            subject.watch()
+            subject.close()
+            expect(stopFn.firstCall.calledWithExactly()).to.equal(true)
           })
         })
       })
