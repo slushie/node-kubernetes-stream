@@ -23,7 +23,7 @@ class EventSource extends EventEmitter {
   }
 
   watch (options = {}) {
-    if (this.watching) return this.stopFn
+    if (this.watching) return
 
     this.stopFn = this.watchFn.call(null, options, (err, event) => {
       if (err) {

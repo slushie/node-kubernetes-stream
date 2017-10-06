@@ -81,10 +81,10 @@ describe('source.js', () => {
       beforeEach('create watchFn', () => {
         stopFn = sinon.stub()
         watchFnArgs = undefined
-        watchFn = (...args) => {
+        watchFn = sinon.stub().callsFake((...args) => {
           watchFnArgs = args
           return stopFn
-        }
+        })
       })
 
       const RESOURCE_VERSION = 'test-rv'
@@ -108,49 +108,63 @@ describe('source.js', () => {
         subject = new EventSource(() => apiList, watchFn)
       })
 
-      context('is called with', () => {
-        context('options', () => {
-          it('comes from .watch()', () => {
-            const localOpts = {option: 'value'}
-            subject.watch(localOpts)
-            expect(watchFnArgs[0]).to.equal(localOpts)
-          })
+      context('is called', () => {
+        it('by .watch()', () => {
+          expect(watchFn.callCount).to.equal(0)
+          subject.watch()
+          expect(watchFn.callCount).to.equal(1)
         })
 
-        context('callback', () => {
-          it('is a function(err, apiEvent)', () => {
-            subject.watch()
-            const callback = watchFnArgs[1]
-            expect(callback).to.be.a('function')
-              .with.lengthOf(2)
-          })
+        it('only once', () => {
+          subject.watch()
+          subject.watch()
+          expect(watchFn.callCount).to.equal(1)
+        })
 
-          context('(null, apiEvent)', () => {
-            it('emits a "event" event', (done) => {
-              subject.watch()
-              const callback = watchFnArgs[1]
-
-              subject.on('event', (event) => {
-                expect(event).to.equal(apiEvent)
-                done()
-              })
-
-              callback(null, apiEvent)
+        context('with arguments', () => {
+          context('options', () => {
+            it('comes from .watch()', () => {
+              const localOpts = {option: 'value'}
+              subject.watch(localOpts)
+              expect(watchFnArgs[0]).to.equal(localOpts)
             })
           })
 
-          context('(err, null)', () => {
-            it('emits an "error" event', (done) => {
+          context('callback', () => {
+            it('is a function(err, apiEvent)', () => {
               subject.watch()
               const callback = watchFnArgs[1]
-              const cbErr = new Error('test')
+              expect(callback).to.be.a('function')
+                .with.lengthOf(2)
+            })
 
-              subject.on('error', (err) => {
-                expect(err).to.equal(cbErr)
-                done()
+            context('(null, apiEvent)', () => {
+              it('emits a "event" event', (done) => {
+                subject.watch()
+                const callback = watchFnArgs[1]
+
+                subject.on('event', (event) => {
+                  expect(event).to.equal(apiEvent)
+                  done()
+                })
+
+                callback(null, apiEvent)
               })
+            })
 
-              callback(cbErr)
+            context('(err, null)', () => {
+              it('emits an "error" event', (done) => {
+                subject.watch()
+                const callback = watchFnArgs[1]
+                const cbErr = new Error('test')
+
+                subject.on('error', (err) => {
+                  expect(err).to.equal(cbErr)
+                  done()
+                })
+
+                callback(cbErr)
+              })
             })
           })
         })
