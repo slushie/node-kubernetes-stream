@@ -1,3 +1,3 @@
 'use strict';
 
-module.exports = require('./lib/stream.js')
+module.exports = require('./src/stream.js')
