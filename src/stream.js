@@ -33,9 +33,10 @@ class KubernetesStream extends Readable {
     this.watch()
   }
 
-  list () {
+  list (labelSelector) {
     const options = {
-      resourceVersion: this.resourceVersion || '0'
+      resourceVersion: this.resourceVersion || '0',
+      labelSelector
     }
 
     debug('listing objects from rv %s', options.resourceVersion)
@@ -49,15 +50,16 @@ class KubernetesStream extends Readable {
     })
   }
 
-  watch () {
+  watch (labelSelector) {
     if (!this.resourceVersion) {
-      return this.list().then(this.watch)
+      return this.list(labelSelector).then(this.watch)
     }
 
     const timeoutSeconds = this.timeout * (Math.random() + 1) / 1000
     const options = {
       resourceVersion: this.resourceVersion,
-      timeoutSeconds
+      timeoutSeconds,
+      labelSelector
     }
 
     debug('watching objects from rv %s with %ds timeout',
