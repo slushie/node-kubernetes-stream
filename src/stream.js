@@ -7,17 +7,18 @@ const {createEventSource, getResourceVersion} = require('./kubernetes')
 const DEFAULT_TIMEOUT = 5000
 
 class KubernetesStream extends Readable {
-  constructor ({
-    source = createEventSource(),
-    timeout = DEFAULT_TIMEOUT,
-    ...rest
-  } = {}) {
-    super({objectMode: true, ...rest})
+  constructor (options = {}) {
+    if (options.source === undefined) options.source = createEventSource()
+    if (options.timeout === undefined) options.timeout = DEFAULT_TIMEOUT
 
-    this.timeout = timeout
+    const streamOptions = Object.assign({objectMode: true}, options)
+    delete streamOptions.source
+    delete streamOptions.timeout
+    super(streamOptions)
+
     this.resourceVersion = '0'
-
-    this.source = source
+    this.timeout = options.timeout
+    this.source = options.source
       .on('list', this._onSourceList)
       .on('event', this._onSourceEvent)
       .on('end', this._onSourceEnd)
