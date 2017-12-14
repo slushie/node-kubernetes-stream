@@ -14,9 +14,11 @@ class KubernetesStream extends Readable {
     const streamOptions = Object.assign({objectMode: true}, options)
     delete streamOptions.source
     delete streamOptions.timeout
+    delete streamOptions.labelSelector
     super(streamOptions)
 
     this.resourceVersion = '0'
+    this.labelSelector = options.labelSelector
     this.timeout = options.timeout
     this.source = options.source
       .on('list', this._onSourceList)
@@ -33,13 +35,15 @@ class KubernetesStream extends Readable {
     this.watch()
   }
 
-  list (labelSelector) {
+  list () {
     const options = {
       resourceVersion: this.resourceVersion || '0',
-      labelSelector
+      labelSelector: this.labelSelector
     }
 
-    debug('listing objects from rv %s', options.resourceVersion)
+    debug('listing objects from rv %s with selector %j',
+      options.resourceVersion, options.labelSelector)
+
     return new Promise((resolve, reject) => {
       this.source.once('error', reject).once('list', () => {
         this.source.removeListener('error', reject)
@@ -50,20 +54,20 @@ class KubernetesStream extends Readable {
     })
   }
 
-  watch (labelSelector) {
+  watch () {
     if (!this.resourceVersion) {
-      return this.list(labelSelector).then(this.watch)
+      return this.list().then(this.watch)
     }
 
     const timeoutSeconds = this.timeout * (Math.random() + 1) / 1000
     const options = {
       resourceVersion: this.resourceVersion,
-      timeoutSeconds,
-      labelSelector
+      labelSelector: this.labelSelector,
+      timeoutSeconds
     }
 
-    debug('watching objects from rv %s with %ds timeout',
-      this.resourceVersion, timeoutSeconds)
+    debug('watching objects from rv %s with %ds timeout and selector %j',
+      options.resourceVersion, options.timeoutSeconds, options.labelSelector)
 
     return new Promise((resolve, reject) => {
       this.source.once('error', reject).once('event', () => {
