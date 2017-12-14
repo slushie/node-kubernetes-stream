@@ -45,7 +45,7 @@ function createClient ({
  */
 function createEventSource (client = createClient()) {
   return new EventSource(
-    /* list  */ (options) => client.get({qs: options}),
+    /* list  */ (options, callback) => client.get({qs: options}, callback),
     /* watch */ (options, callback) => streamCallback(
       client.get({
         qs: Object.assign({

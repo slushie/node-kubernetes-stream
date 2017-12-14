@@ -79,6 +79,10 @@ class KubernetesStream extends Readable {
     })
   }
 
+  close () {
+    this.source.close()
+  }
+
   _onSourceList (list) {
     this.resourceVersion = getResourceVersion(list)
     debug('latest rv %s', this.resourceVersion)
