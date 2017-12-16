@@ -72,21 +72,41 @@ function findKubernetesConfig () {
 
   if (process.env.KUBECONFIG) {
     debug('using KUBECONFIG %j', process.env.KUBECONFIG)
-    const kubeconfig = Kube.config.loadKubeconfig(process.env.KUBECONFIG)
-    config = Kube.config.fromKubeconfig(kubeconfig)
-    return config
+    config = parseOidcKubeconfig(process.env.KUBECONFIG)
   }
 
-  if (process.env.KUBERNETES_SERVICE_HOST) {
+  else if (process.env.KUBERNETES_SERVICE_HOST) {
     debug('using in-cluster api at %s:%d',
       process.env.KUBERNETES_SERVICE_HOST,
       process.env.KUBERNETES_SERVICE_PORT)
     config = Kube.config.getInCluster()
-    return config
   }
 
-  debug('falling back to user config')
-  config = Kube.config.fromKubeconfig()
+  else {
+    debug('falling back to default kubeconfig')
+    config = parseOidcKubeconfig()
+  }
+
+  return config
+}
+
+function parseOidcKubeconfig (file) {
+  const kubeconfig = Kube.config.loadKubeconfig(file)
+  const config = Kube.config.fromKubeconfig(kubeconfig)
+
+  if (config && !config.auth) {
+    const currentContext = kubeconfig['current-context']
+    const context = kubeconfig.contexts
+      .find(context => context.name === currentContext).context
+    const userConfig = kubeconfig.users
+      .find(user => user.name === context.user)
+
+    // hack in id-token support
+    const bearer = _.get(userConfig, 'user.auth-provider.config.id-token')
+    if (bearer) config.auth = { bearer }
+  }
+
+  debug('parsed kubeconfig %j', config)
   return config
 }
 
