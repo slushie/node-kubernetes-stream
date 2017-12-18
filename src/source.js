@@ -28,21 +28,19 @@ class EventSource extends EventEmitter {
     this.stopFn = this.watchFn.call(null, options, (err, event) => {
       if (err) {
         debug('watch error %s', String(err))
-        return this.emit('error', err)
+        this.emit('error', err)
       }
 
-      if (event) {
-        debug('watch event %j', {
-          type: event.type,
-          kind: event.object.kind
-        })
-
-        return this.emit('event', event)
+      else if (event) {
+        debug('watch event %j', event)
+        this.emit('event', event)
       }
 
-      debug('watch end')
-      this.watching = false
-      this.emit('end')
+      else {
+        debug('watch end')
+        this.watching = false
+        this.emit('end')
+      }
     })
 
     this.watching = true

@@ -122,7 +122,14 @@ function parseOidcKubeconfig (file) {
  */
 function streamCallback (stream, cb) {
   stream.on('data', (chunk) => {
-    cb(null, chunk)
+    let message
+    try {
+      message = JSON.parse(chunk)
+    } catch (err) {
+      return cb(err)
+    }
+
+    cb(null, message)
   }).on('error', (err) => {
     cb(err, null)
   }).on('end', () => {

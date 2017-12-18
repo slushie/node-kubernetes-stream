@@ -8,22 +8,19 @@ const DEFAULT_TIMEOUT = 5000
 
 class KubernetesStream extends Readable {
   constructor (options = {}) {
-    if (options.source === undefined) options.source = createEventSource()
-    if (options.timeout === undefined) options.timeout = DEFAULT_TIMEOUT
+    const streamOptions = Object.assign({
+      objectMode: true
+    }, options.streamOptions || {})
 
-    const streamOptions = Object.assign({objectMode: true}, options)
-    delete streamOptions.source
-    delete streamOptions.timeout
-    delete streamOptions.labelSelector
     super(streamOptions)
 
     this.resourceVersion = '0'
-    this.labelSelector = options.labelSelector
-    this.timeout = options.timeout
-    this.source = options.source
-      .on('list', this._onSourceList)
-      .on('event', this._onSourceEvent)
-      .on('end', this._onSourceEnd)
+    this.labelSelector = (options.labelSelector || undefined)
+    this.timeout = (options.timeout || DEFAULT_TIMEOUT)
+    this.source = (options.source || createEventSource())
+      .on('list', this._onSourceList.bind(this))
+      .on('event', this._onSourceEvent.bind(this))
+      .on('end', this._onSourceEnd.bind(this))
   }
 
   /**
@@ -32,7 +29,7 @@ class KubernetesStream extends Readable {
    */
   _read () {
     debug('consumer wants to read')
-    this.watch()
+    if (!this.source.watching) this.watch()
   }
 
   list () {
@@ -41,8 +38,7 @@ class KubernetesStream extends Readable {
       labelSelector: this.labelSelector
     }
 
-    debug('listing objects from rv %s with selector %j',
-      options.resourceVersion, options.labelSelector)
+    debug('listing objects from rv %s', options.resourceVersion)
 
     return new Promise((resolve, reject) => {
       this.source.once('error', reject).once('list', () => {
@@ -56,24 +52,49 @@ class KubernetesStream extends Readable {
 
   watch () {
     if (!this.resourceVersion) {
-      return this.list().then(this.watch)
+      return this.list().then(() => this.watch())
     }
 
-    const timeoutSeconds = this.timeout * (Math.random() + 1) / 1000
+    const timeoutSeconds = parseInt(
+      this.timeout * (Math.random() + 1) / 1000
+    )
+
     const options = {
       resourceVersion: this.resourceVersion,
       labelSelector: this.labelSelector,
       timeoutSeconds
     }
 
-    debug('watching objects from rv %s with %ds timeout and selector %j',
-      options.resourceVersion, options.timeoutSeconds, options.labelSelector)
+    debug('watching objects from rv %s with %ds timeout',
+      options.resourceVersion, options.timeoutSeconds)
 
     return new Promise((resolve, reject) => {
-      this.source.once('error', reject).once('event', () => {
-        this.source.removeListener('error', reject)
+      const source = this.source
+
+      function removeStreamListeners () {
+        source.removeListener('event', onEvent)
+        source.removeListener('error', onError)
+        source.removeListener('end', onEnd)
+      }
+
+      function onError (err) {
+        removeStreamListeners()
+        reject(err)
+      }
+
+      function onEvent (ev) {
+        removeStreamListeners()
         resolve(this.resourceVersion)
-      })
+      }
+
+      function onEnd () {
+        removeStreamListeners()
+        resolve(this.resourceVersion)
+      }
+
+      source.once('error', onError)
+        .once('event', onEvent)
+        .once('end', onEnd)
 
       this.source.watch(options)
     })
@@ -85,13 +106,12 @@ class KubernetesStream extends Readable {
 
   _onSourceList (list) {
     this.resourceVersion = getResourceVersion(list)
-    debug('latest rv %s', this.resourceVersion)
+
     this.emit('list', list)
   }
 
   _onSourceEvent (event) {
     this.resourceVersion = getResourceVersion(event.object)
-    debug('latest rv %s', this.resourceVersion)
 
     if (!this.push(event)) {
       debug('consumer buffer is full')
@@ -100,7 +120,7 @@ class KubernetesStream extends Readable {
   }
 
   _onSourceEnd () {
-    debug('source watch ended')
+    this.source.close()
     this.watch()
   }
 }
