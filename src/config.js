@@ -1,6 +1,6 @@
 'use strict'
 
-const debug = require('debug')('kubernetes-stream:config-parser')
+const debug = require('debug')('kubernetes-stream:config')
 const Url = require('url')
 const fs = require('fs')
 const Yaml = require('js-yaml')
@@ -64,7 +64,7 @@ class KubernetesConfig {
   }
 
   parseFile (file, context) {
-    const config = Yaml.safeLoad(file) || {}
+    const config = Yaml.safeLoad(fs.readFileSync(file)) || {}
     if (!context) context = config['current-context']
     if (!context) throw new Error('No Kubernetes context available in: ' + file)
 
@@ -139,6 +139,8 @@ class KubernetesConfig {
     this.url = Url.format({ protocol: 'https', host })
 
     debug('reading in-cluster config from standard paths')
+
+    const KubernetesConfig = this.constructor
     this.ca = fs.readFileSync(KubernetesConfig.caPath, 'utf8')
     this.token = fs.readFileSync(KubernetesConfig.tokenPath, 'utf8')
     this.namespace = fs.readFileSync(KubernetesConfig.namespacePath, 'utf8')
