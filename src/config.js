@@ -112,13 +112,11 @@ class KubernetesConfig {
       }
 
       const basic = _.pick(userObj, ['username', 'password'])
-      const token = [
+      const token = _.at(userObj, [
         'user.token',
         'user.auth-provider.config.access-token',
         'user.auth-provider.config.id-token'
-      ]
-        .map(path => _.get(userObj, path))
-        .find(Boolean)
+      ]).find(Boolean)
 
       if (token) {
         debug('using bearer token %j', token)
