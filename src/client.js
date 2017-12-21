@@ -68,7 +68,7 @@ class Client {
   listWatcher (group, kind) {
     return new ListWatch(
       /* list  */ (params, callback) => Client.getCallback(
-        this.get(group, kind, params),
+        this.get(group, kind, params).then(r => r.data),
         callback
       ),
       /* watch */ (params, callback) => Client.streamCallback(
