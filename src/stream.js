@@ -1,10 +1,25 @@
 'use strict'
 
+const _ = require('lodash')
 const Readable = require('stream').Readable
 const debug = require('debug')('kubernetes-stream:stream')
-const {createEventSource, getResourceVersion} = require('./kubernetes')
+
+const Client = require('./client')
 
 const DEFAULT_TIMEOUT = 5000
+
+function getResourceVersion (object) {
+  return _.get(object, 'metadata.resourceVersion')
+}
+
+function parseResource (resource) {
+  const separator = resource.lastIndexOf('/')
+  if (separator < 1) throw new Error(`Invalid Api Resource "${resource}"`)
+  return [
+    /* group */ resource.slice(0, separator - 1),
+    /* kind */ resource.slice(separator + 1)
+  ]
+}
 
 class KubernetesStream extends Readable {
   constructor (options = {}) {
@@ -17,7 +32,16 @@ class KubernetesStream extends Readable {
     this.resourceVersion = '0'
     this.labelSelector = (options.labelSelector || undefined)
     this.timeout = (options.timeout || DEFAULT_TIMEOUT)
-    this.source = (options.source || createEventSource())
+    this.client = (options.client || new Client())
+
+    const groupKind = parseResource(
+      options.resource || 'v1/pods'
+    )
+
+    this.source = this.client.listWatcher(
+      groupKind.shift(),
+      groupKind.shift()
+    )
       .on('list', this._onSourceList.bind(this))
       .on('event', this._onSourceEvent.bind(this))
       .on('end', this._onSourceEnd.bind(this))
@@ -55,7 +79,7 @@ class KubernetesStream extends Readable {
       return this.list().then(() => this.watch())
     }
 
-    const timeoutSeconds = parseInt(
+    const timeoutSeconds = Math.round(
       this.timeout * (Math.random() + 1) / 1000
     )
 

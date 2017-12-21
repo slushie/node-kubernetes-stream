@@ -1,7 +1,7 @@
 const EventEmitter = require('events').EventEmitter
-const debug = require('debug')('kubernetes-stream:source')
+const debug = require('debug')('kubernetes-stream:list-watch')
 
-class EventSource extends EventEmitter {
+class ListWatch extends EventEmitter {
   constructor (list, watch) {
     super()
     this.listFn = list
@@ -29,14 +29,10 @@ class EventSource extends EventEmitter {
       if (err) {
         debug('watch error %s', String(err))
         this.emit('error', err)
-      }
-
-      else if (event) {
+      } else if (event) {
         debug('watch event %j', event)
         this.emit('event', event)
-      }
-
-      else {
+      } else {
         debug('watch end')
         this.watching = false
         this.emit('end')
@@ -58,4 +54,4 @@ class EventSource extends EventEmitter {
   }
 }
 
-module.exports = EventSource
+module.exports = ListWatch

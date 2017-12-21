@@ -17,11 +17,12 @@
     "node": ">=6.0"
   },
   "dependencies": {
+    "axios": "^0.17.1",
     "chai": "^4.1.1",
     "debug": "^2.6.8",
-    "kubernetes-client": "^3.13.0",
     "lodash": "^4.17.4",
-    "mocha": "^3.5.0"
+    "mocha": "^3.5.0",
+    "js-yaml": "latest"
   },
   "devDependencies": {
     "eslint": "^4.3.0",

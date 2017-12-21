@@ -2,7 +2,7 @@
 
 module.exports = require('./src/stream.js')
 Object.assign(module.exports,
-  require('./src/kubernetes'),
-  require('./src/source')
+  require('./src/config'),
+  require('./src/client'),
+  require('./src/list-watch')
 )
-

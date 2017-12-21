@@ -7,14 +7,15 @@ const url = require('url')
 const _ = require('lodash')
 
 const KubernetesConfig = require('./config')
+const ListWatch = require('./list-watch')
 
-class Kubernetes {
+class Client {
   constructor (options = {}) {
     this.config = options.config || KubernetesConfig.find()
-    this.client = this.createClient()
+    this.client = this.createHttpClient()
   }
 
-  createClient () {
+  createHttpClient () {
     const { config } = this
 
     let headers, auth
@@ -62,6 +63,72 @@ class Kubernetes {
       params
     })
   }
+
+  listWatcher (group, resource) {
+    return new ListWatch(
+      /* list  */ (params, callback) => Client.getCallback(
+        this.get(group, resource, params),
+        callback
+      ),
+      /* watch */ (params, callback) => Client.streamCallback(
+        this.stream(group, resource, Object.assign({ watch: true }, params)),
+        callback
+      )
+    )
+  }
+
+  static getCallback (promise, callback) {
+    promise.then(
+      res => callback(null, res),
+      err => callback(err, null)
+    )
+  }
+
+  /**
+   * Take a Readable stream and pipe the chunks into a callback, or
+   * null at the end of the stream.
+   *
+   * Returns a "stop" function that will abort the stream.
+   *
+   * @param promise
+   * @param {function} callback
+   * @returns {Function}
+   */
+  static streamCallback (promise, callback) {
+    let stream
+    promise.then((res) => {
+      // streaming already stopped
+      if (stream === false) {
+        res.data.destroy()
+        return
+      }
+
+      stream = res.data
+        .on('data', (chunk) => {
+          let message
+          try {
+            message = JSON.parse(chunk)
+          } catch (err) {
+            return callback(err)
+          }
+
+          callback(null, message)
+        }).on('error', (err) => {
+          callback(err, null)
+        }).on('end', () => {
+          callback(null, null)
+        })
+    })
+
+    return function () {
+      if (stream) {
+        stream.removeAllListeners()
+        stream.destroy()
+      } else {
+        stream = false
+      }
+    }
+  }
 }
 
-module.exports = Kubernetes
+module.exports = Client
