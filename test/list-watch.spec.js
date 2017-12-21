@@ -5,14 +5,14 @@ const sinon = require('sinon')
 const chai = require('chai')
 const expect = chai.expect
 
-describe('source.js', () => {
-  const EventSource = require('../src/source.js')
-  it('exports the EventSource class', () => {
-    expect(EventSource).to.be.a('function')
-      .with.property('name').equal('EventSource')
+describe('ListWatch', () => {
+  const ListWatch = require('../src/list-watch.js')
+  it('exports the ListWatch class', () => {
+    expect(ListWatch).to.be.a('function')
+      .with.property('name').equal('ListWatch')
   })
 
-  describe('EventSource', () => {
+  describe('ListWatch', () => {
     describe('listFn', () => {
       let subject, listFn, listFnArgs
       beforeEach('default listFn', () => {
@@ -23,7 +23,7 @@ describe('source.js', () => {
       })
 
       beforeEach('create subject', () => {
-        subject = new EventSource(listFn, null)
+        subject = new ListWatch(listFn, null)
       })
 
       context('is called with', () => {
@@ -105,7 +105,7 @@ describe('source.js', () => {
       }
 
       beforeEach('create subject', () => {
-        subject = new EventSource(() => apiList, watchFn)
+        subject = new ListWatch(() => apiList, watchFn)
       })
 
       context('is called', () => {

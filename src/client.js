@@ -71,7 +71,7 @@ class Client {
         callback
       ),
       /* watch */ (params, callback) => Client.streamCallback(
-        this.stream(group, resource, Object.assign({ watch: true }, params)),
+        this.stream(group, resource, Object.assign({ watch: true }, params)).then(r => r.data),
         callback
       )
     )
@@ -90,20 +90,20 @@ class Client {
    *
    * Returns a "stop" function that will abort the stream.
    *
-   * @param promise
+   * @param {Promise.<Readable|EventEmitter>} promise
    * @param {function} callback
    * @returns {Function}
    */
   static streamCallback (promise, callback) {
     let stream
-    promise.then((res) => {
+    promise.then((readable) => {
       // streaming already stopped
       if (stream === false) {
-        res.data.destroy()
+        if (readable.destroy) readable.destroy()
         return
       }
 
-      stream = res.data
+      stream = readable
         .on('data', (chunk) => {
           let message
           try {
