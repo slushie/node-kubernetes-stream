@@ -12,6 +12,7 @@ const ListWatch = require('./list-watch')
 class Client {
   constructor (options = {}) {
     this.config = options.config || KubernetesConfig.find()
+    this.namespace = this.config.namespace
     this.client = this.createHttpClient()
   }
 
@@ -40,11 +41,11 @@ class Client {
     })
   }
 
-  request (group, resource, options) {
+  request (group, kind, options) {
     const segments = [
       group,
-      this.config.namespace ? `namespaces/${this.config.namespace}` : '',
-      resource
+      this.namespace ? `namespaces/${this.namespace}` : '',
+      kind
     ]
 
     return this.client.request(Object.assign({
@@ -52,26 +53,26 @@ class Client {
     }, options))
   }
 
-  get (group, resource, params) {
-    return this.request(group, resource, { method: 'get', params })
+  get (group, kind, params) {
+    return this.request(group, kind, { method: 'get', params })
   }
 
-  stream (group, resource, params) {
-    return this.request(group, resource, {
+  stream (group, kind, params) {
+    return this.request(group, kind, {
       responseType: 'stream',
       method: 'get',
       params
     })
   }
 
-  listWatcher (group, resource) {
+  listWatcher (group, kind) {
     return new ListWatch(
       /* list  */ (params, callback) => Client.getCallback(
-        this.get(group, resource, params),
+        this.get(group, kind, params),
         callback
       ),
       /* watch */ (params, callback) => Client.streamCallback(
-        this.stream(group, resource, Object.assign({ watch: true }, params)).then(r => r.data),
+        this.stream(group, kind, Object.assign({ watch: true }, params)).then(r => r.data),
         callback
       )
     )

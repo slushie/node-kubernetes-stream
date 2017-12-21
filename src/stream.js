@@ -22,6 +22,16 @@ function parseResource (resource) {
 }
 
 class KubernetesStream extends Readable {
+  /**
+   *
+   * @param {object} options
+   * @param {string} [options.resource] path to the resource, default is v1/pods
+   * @param {string} [options.namespace]
+   * @param {object} [options.streamOptions]
+   * @param {string} [options.labelSelector]
+   * @param {number} [options.timeout]
+   * @param {Client} [options.client]
+   */
   constructor (options = {}) {
     const streamOptions = Object.assign({
       objectMode: true
@@ -33,6 +43,10 @@ class KubernetesStream extends Readable {
     this.labelSelector = (options.labelSelector || undefined)
     this.timeout = (options.timeout || DEFAULT_TIMEOUT)
     this.client = (options.client || new Client())
+
+    if (options.namespace) {
+      this.client.namespace = options.namespace
+    }
 
     const groupKind = parseResource(
       options.resource || 'v1/pods'
