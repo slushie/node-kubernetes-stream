@@ -139,8 +139,6 @@ class KubernetesConfig {
     this.url = Url.format({ protocol: 'https', host })
 
     debug('reading in-cluster config from standard paths')
-
-    const KubernetesConfig = this.constructor
     this.ca = fs.readFileSync(KubernetesConfig.caPath, 'utf8')
     this.token = fs.readFileSync(KubernetesConfig.tokenPath, 'utf8')
     this.namespace = fs.readFileSync(KubernetesConfig.namespacePath, 'utf8')
