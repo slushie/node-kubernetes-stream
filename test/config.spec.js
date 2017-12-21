@@ -3,11 +3,10 @@
 
 const chai = require('chai')
 const expect = chai.expect
-const sinon = require('sinon')
 const resolve = require('path').resolve
 
 describe('KubernetesConfig', () => {
-  describe('.find()', () => {
+  describe('static .find()', () => {
     let KubernetesConfig, find
     const module = '../src/config'
 
@@ -83,6 +82,28 @@ describe('KubernetesConfig', () => {
 
       it('falls back to user local config', () => {
         expect(find()).to.have.property('url').equal('https://api.kubernetes.local')
+      })
+    })
+  })
+
+  describe('.parseFile(file, context)', () => {
+    const KubernetesConfig = require('../src/config')
+    context('parser', () => {
+      let subject
+      beforeEach('create subject', () => {
+        subject = new KubernetesConfig({ file: resolve(__dirname, 'fixtures/kubeconfig') })
+      })
+
+      it('sets subject.ca = cluster.certificate-authority-data', () => {
+        expect(subject.ca.toString()).to.equal('ca-data')
+      })
+
+      it('sets subject.cert = user.client-certificate-data', () => {
+        expect(subject.cert.toString()).to.equal('client-cert-data')
+      })
+
+      it('sets subject.key = user.client-key-data', () => {
+        expect(subject.key.toString()).to.equal('client-key-data')
       })
     })
   })
