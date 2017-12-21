@@ -3,7 +3,6 @@
 const https = require('https')
 const axios = require('axios')
 const path = require('path')
-const url = require('url')
 const _ = require('lodash')
 
 const KubernetesConfig = require('./config')
@@ -34,45 +33,43 @@ class Client {
     }
 
     return axios.create({
-      baseURL: url.resolve(config.url, 'api'),
+      baseURL: config.url,
       httpsAgent,
       headers,
       auth
     })
   }
 
-  request (group, kind, options) {
-    const segments = [
-      group,
-      this.namespace ? `namespaces/${this.namespace}` : '',
-      kind
-    ]
+  request (apiVersion, kind, options) {
+    const basePath = apiVersion === 'v1' ? 'api' : 'apis'
+    const nsPath = this.namespace ? `namespaces/${this.namespace}` : ''
+    const segments = [basePath, apiVersion, nsPath, kind]
 
     return this.client.request(Object.assign({
       url: path.join.apply(path, segments.filter(Boolean))
     }, options))
   }
 
-  get (group, kind, params) {
-    return this.request(group, kind, { method: 'get', params })
+  get (apiVersion, kind, params) {
+    return this.request(apiVersion, kind, { method: 'get', params })
   }
 
-  stream (group, kind, params) {
-    return this.request(group, kind, {
+  stream (apiVersion, kind, params) {
+    return this.request(apiVersion, kind, {
       responseType: 'stream',
       method: 'get',
       params
     })
   }
 
-  listWatcher (group, kind) {
+  listWatcher (apiVersion, kind) {
     return new ListWatch(
       /* list  */ (params, callback) => Client.getCallback(
-        this.get(group, kind, params).then(r => r.data),
+        this.get(apiVersion, kind, params).then(r => r.data),
         callback
       ),
       /* watch */ (params, callback) => Client.streamCallback(
-        this.stream(group, kind, Object.assign({ watch: true }, params)).then(r => r.data),
+        this.stream(apiVersion, kind, Object.assign({ watch: true }, params)).then(r => r.data),
         callback
       )
     )

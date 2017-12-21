@@ -12,13 +12,18 @@ function getResourceVersion (object) {
   return _.get(object, 'metadata.resourceVersion')
 }
 
-function parseResource (resource) {
+function parseResourcePath (resource) {
   const separator = resource.lastIndexOf('/')
   if (separator < 1) throw new Error(`Invalid Api Resource "${resource}"`)
   return [
-    /* group */ resource.slice(0, separator - 1),
-    /* kind */ resource.slice(separator + 1)
+    /* apiVersion */ resource.slice(0, separator),
+    /* kind */ plural(resource.slice(separator + 1))
   ]
+}
+
+function plural (name) {
+  if (name.slice(-1) !== 's') return name + 's'
+  return name
 }
 
 class KubernetesStream extends Readable {
@@ -28,6 +33,7 @@ class KubernetesStream extends Readable {
    * @param {string} [options.resource] path to the resource, default is v1/pods
    * @param {string} [options.namespace]
    * @param {object} [options.streamOptions]
+   * @param {string} [options.resourceVersion]
    * @param {string} [options.labelSelector]
    * @param {number} [options.timeout]
    * @param {Client} [options.client]
@@ -39,7 +45,7 @@ class KubernetesStream extends Readable {
 
     super(streamOptions)
 
-    this.resourceVersion = '0'
+    this.resourceVersion = (options.resourceVersion || '0')
     this.labelSelector = (options.labelSelector || undefined)
     this.timeout = (options.timeout || DEFAULT_TIMEOUT)
     this.client = (options.client || new Client())
@@ -48,13 +54,13 @@ class KubernetesStream extends Readable {
       this.client.namespace = options.namespace
     }
 
-    const groupKind = parseResource(
+    const resourcePath = parseResourcePath(
       options.resource || 'v1/pods'
     )
 
     this.source = this.client.listWatcher(
-      groupKind.shift(),
-      groupKind.shift()
+      resourcePath.shift(),
+      resourcePath.shift()
     )
       .on('list', this._onSourceList.bind(this))
       .on('event', this._onSourceEvent.bind(this))

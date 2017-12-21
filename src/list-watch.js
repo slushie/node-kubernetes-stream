@@ -16,8 +16,8 @@ class ListWatch extends EventEmitter {
         debug('list error %s', String(err))
         return this.emit('error', err)
       }
-
-      debug('%s returned %d items', list.kind, list.items.length)
+      debug('list', list)
+      debug('%s returned %d items', list.kind, list.items ? list.items.length : 0)
       this.emit('list', list)
     })
   }
