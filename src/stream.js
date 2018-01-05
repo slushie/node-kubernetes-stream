@@ -17,7 +17,7 @@ function parseResourcePath (resource) {
   if (separator < 1) throw new Error(`Invalid Api Resource "${resource}"`)
   return [
     /* apiVersion */ resource.slice(0, separator),
-    /* kind */ plural(resource.slice(separator + 1))
+    /* kind */ plural(resource.slice(separator + 1)).toLowerCase()
   ]
 }
 

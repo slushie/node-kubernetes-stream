@@ -4,6 +4,7 @@ const https = require('https')
 const axios = require('axios')
 const path = require('path')
 const _ = require('lodash')
+const debug = require('debug')('kubernetes-stream:client')
 
 const KubernetesConfig = require('./config')
 const ListWatch = require('./list-watch')
@@ -21,14 +22,21 @@ class Client {
     let headers, auth
     if (config.token) {
       headers = {authorization: `Bearer ${config.token}`}
+      debug('using bearer token')
     } else if (config.basic) {
       auth = _.pick(config.basic, ['username', 'password'])
+      debug('using basic auth')
+    } else {
+      debug('using anonymous API access')
     }
 
     let httpsAgent
     const certConfig = _.pick(config, ['ca', 'cert', 'key', 'insecureSkipTlsVerify'])
     if (!_.isEmpty(certConfig)) {
       certConfig.rejectUnauthorized = !certConfig.insecureSkipTlsVerify
+      delete certConfig.insecureSkipTlsVerify
+
+      debug('using https agent with', certConfig)
       httpsAgent = new https.Agent(certConfig)
     }
 
@@ -45,9 +53,10 @@ class Client {
     const nsPath = this.namespace ? `namespaces/${this.namespace}` : ''
     const segments = [basePath, apiVersion, nsPath, kind]
 
-    return this.client.request(Object.assign({
-      url: path.join.apply(path, segments.filter(Boolean))
-    }, options))
+    const url = path.join.apply(path, segments.filter(Boolean))
+    debug('requesting %j with options %j', url, options)
+
+    return this.client.request(Object.assign({ url }, options))
   }
 
   get (apiVersion, kind, params) {
@@ -63,13 +72,14 @@ class Client {
   }
 
   listWatcher (apiVersion, kind) {
+    const watch = (p) => Object.assign({ watch: true }, p)
     return new ListWatch(
       /* list  */ (params, callback) => Client.getCallback(
         this.get(apiVersion, kind, params).then(r => r.data),
         callback
       ),
       /* watch */ (params, callback) => Client.streamCallback(
-        this.stream(apiVersion, kind, Object.assign({ watch: true }, params)).then(r => r.data),
+        this.stream(apiVersion, kind, watch(params)).then(r => r.data),
         callback
       )
     )
@@ -97,16 +107,20 @@ class Client {
     promise.then((readable) => {
       // streaming already stopped
       if (stream === false) {
+        debug('stopFn called before streaming began')
         if (readable.destroy) readable.destroy()
         return
       }
 
       stream = readable
         .on('data', (chunk) => {
+          const data = chunk.toString()
           let message
           try {
-            message = JSON.parse(chunk)
+            message = JSON.parse(data)
           } catch (err) {
+            debug('failed to parse data %j', data)
+            err.data = data
             return callback(err)
           }
 
